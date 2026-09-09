@@ -1,11 +1,46 @@
 #include "Version.h"
+#include "spdlog/spdlog.h"
 #include <asio.hpp>
 #include <crow.h>
 #include <crow/http_response.h>
 #include <cstdint>
+#include <memory>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <string>
 
-namespace MatchedFreq
+namespace
+{
+auto InitLogging() -> void;
+
+auto InitLogging() -> void
+{
+  spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%t] %v");
+
+  // Determine build mode at compile time
+  constexpr bool IS_DEBUG_BUILD =
+#if defined(NDEBUG)
+      false;
+#else
+      true;
+#endif
+
+  if constexpr (IS_DEBUG_BUILD)
+  {
+    spdlog::set_level(spdlog::level::debug);
+    spdlog::debug("Logging initialized in DEBUG mode (Level: DEBUG)");
+  }
+  else
+  {
+    spdlog::set_level(spdlog::level::info);
+    spdlog::info("Logging initialized in RELEASE mode (Level: INFO)");
+  }
+
+  spdlog::info("MatchedFreq Engine initializing...");
+}
+
+}; // namespace
+
+namespace MFreq
 {
 
 class SimulatorServer
@@ -38,7 +73,7 @@ public:
         .onopen(
             [](crow::websocket::connection &conn) -> void
             {
-              CROW_LOG_INFO << "Client connected to simulation stream";
+              spdlog::info("Client connected to simulation stream");
               conn.send_text(
                   R"({"event":"connected","message":"MatchedFreq WS Ready"})");
             })
@@ -47,8 +82,8 @@ public:
             [](crow::websocket::connection &, const std::string &reason,
                uint16_t status_code) -> void
             {
-              CROW_LOG_INFO << "Simulation stream closed: " << reason
-                            << " (code: " << std::to_string(status_code) << ")";
+              spdlog::info("Simulation stream closed: {} (code: {})", reason,
+                           std::to_string(status_code));
             })
         .onmessage(
             [](crow::websocket::connection &conn, const std::string &data,
@@ -69,13 +104,14 @@ private:
   static inline uint32_t s_ActiveSessions = 0;
 };
 
-} // namespace MatchedFreq
+} // namespace MFreq
 
 auto main() -> int
 {
   constexpr uint16_t DEFAULT_PORT = 18080;
-  MatchedFreq::SimulatorServer server(DEFAULT_PORT);
-  server.Run();
+  InitLogging();
+  auto server = std::make_unique<MFreq::SimulatorServer>(DEFAULT_PORT);
+  server->Run();
 
   return 0;
 }

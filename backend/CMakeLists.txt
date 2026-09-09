@@ -73,18 +73,6 @@ project(
   LANGUAGES CXX
 )
 
-# Sanitize version string for target executable binary name
-string(REGEX REPLACE "^v" "" SANITIZED_VERSION "${MATCHEDFREQ_VERSION}")
-set(PROJECT_NAME_WITH_VERSION ${PROJECT_NAME}_${SANITIZED_VERSION})
-
-project(
-  MatchedFreqServer
-  VERSION ${PROJECT_VERSION_STRING}
-  DESCRIPTION "AGPLv3 Analog Circuit Simulator Backend"
-  LANGUAGES CXX
-)
-
-# Strip leading 'v' for binary artifact naming (e.g., MatchedFreqServer_0.0.0-rc1)
 string(REGEX REPLACE "^v" "" SANITIZED_MATCHEDFREQ_VERSION "${MATCHEDFREQ_VERSION}")
 set(PROJECT_NAME_WITH_VERSION ${PROJECT_NAME}_${SANITIZED_MATCHEDFREQ_VERSION})
 
@@ -138,6 +126,17 @@ target_include_directories(
   SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/Crow/include
 )
 
+# 3. spdlog (Header-only target)
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/spdlog/include")
+  message(FATAL_ERROR "spdlog submodule missing! Run 'git submodule update --init --recursive'.")
+endif()
+
+add_library(spdlog INTERFACE)
+target_include_directories(
+  spdlog
+  SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/spdlog/include
+)
+
 # ------------------------------------------------------------------------------
 # Executable Setup
 # ------------------------------------------------------------------------------
@@ -146,7 +145,7 @@ add_executable(${PROJECT_NAME_WITH_VERSION} ${MATCHED_FREQ_SRCS})
 
 target_link_libraries(
   ${PROJECT_NAME_WITH_VERSION}
-  PRIVATE Asio Crow
+  PRIVATE Asio Crow spdlog
 )
 
 target_include_directories(
@@ -157,7 +156,7 @@ target_include_directories(
 )
 
 # Strict Compiler Flags
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   target_compile_options(
     ${PROJECT_NAME_WITH_VERSION}
     PRIVATE -Wall
@@ -182,3 +181,12 @@ find_program(CLANG_TIDY_EXE NAMES "clang-tidy" "clang-tidy-22")
 if(CLANG_TIDY_EXE)
   set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
 endif()
+
+
+# Pass -DNDEBUG explicitly in Release mode if not provided by default
+target_compile_definitions(
+  ${PROJECT_NAME_WITH_VERSION}
+  PRIVATE
+    $<$<CONFIG:Debug>:MATCHEDFREQ_DEBUG>
+    $<$<CONFIG:Release>:NDEBUG MATCHEDFREQ_RELEASE>
+)

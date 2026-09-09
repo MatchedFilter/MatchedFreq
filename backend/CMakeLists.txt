@@ -137,6 +137,28 @@ target_include_directories(
   SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/spdlog/include
 )
 
+# 4. Eigen
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/eigen/CMakeLists.txt")
+  message(FATAL_ERROR "Eigen submodule missing! Run 'git submodule update --init --recursive'.")
+endif()
+
+add_subdirectory(ThirdParty/eigen EXCLUDE_FROM_ALL)
+
+if(TARGET Eigen3::Eigen)
+  # Resolve the real target behind the ALIAS
+  get_target_property(REAL_EIGEN_TARGET Eigen3::Eigen ALIASED_TARGET)
+  if(NOT REAL_EIGEN_TARGET)
+    set(REAL_EIGEN_TARGET "Eigen3::Eigen")
+  endif()
+
+  get_target_property(EIGEN_INTERFACE_INCLUDES ${REAL_EIGEN_TARGET} INTERFACE_INCLUDE_DIRECTORIES)
+  if(EIGEN_INTERFACE_INCLUDES)
+    set_target_properties(${REAL_EIGEN_TARGET} PROPERTIES
+      INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${EIGEN_INTERFACE_INCLUDES}"
+    )
+  endif()
+endif()
+
 # ------------------------------------------------------------------------------
 # Executable Setup
 # ------------------------------------------------------------------------------
@@ -145,7 +167,7 @@ add_executable(${PROJECT_NAME_WITH_VERSION} ${MATCHED_FREQ_SRCS})
 
 target_link_libraries(
   ${PROJECT_NAME_WITH_VERSION}
-  PRIVATE Asio Crow spdlog
+  PRIVATE Asio Crow spdlog Eigen3::Eigen
 )
 
 target_include_directories(
@@ -176,14 +198,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   )
 endif()
 
-# Clang-Tidy Target Integration
 find_program(CLANG_TIDY_EXE NAMES "clang-tidy" "clang-tidy-22")
 if(CLANG_TIDY_EXE)
   set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
 endif()
 
-
-# Pass -DNDEBUG explicitly in Release mode if not provided by default
 target_compile_definitions(
   ${PROJECT_NAME_WITH_VERSION}
   PRIVATE

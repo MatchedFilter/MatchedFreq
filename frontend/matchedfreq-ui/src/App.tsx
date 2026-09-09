@@ -1,169 +1,104 @@
-import { useEffect, useState, useRef } from 'react';
-
-interface HealthData {
-  status: string;
-  engine: string;
-  version: string;
-  asio_version: number;
-}
+import { useState } from 'react';
+import { useHealthCheck } from './hooks/useHealthCheck';
+import { useWebSocket } from './hooks/useWebSocket';
+import { NetlistEditor } from './components/NetlistEditor';
+import { SystemDashboard } from './components/SystemDashboard';
+import type { SimulationType } from './types/simulation';
 
 export default function App() {
-  const [health, setHealth] = useState<HealthData | null>(null);
-  const [healthError, setHealthError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'schematics'>('dashboard');
 
-  const [wsStatus, setWsStatus] = useState<'Disconnected' | 'Connecting' | 'Connected'>('Disconnected');
-  const [messages, setMessages] = useState<string[]>([]);
-  const [inputMsg, setInputMsg] = useState('');
+  const { health, error: healthError } = useHealthCheck('/api/v1/health');
+  const { wsStatus, messages, connect, disconnect, sendMessage } = useWebSocket();
 
-  const wsRef = useRef<WebSocket | null>(null);
+  const handleRunSimulation = (netlist: string, type: SimulationType) => {
+    const payload = JSON.stringify({
+      command: 'RUN_SIMULATION',
+      type,
+      netlist
+    });
 
-  useEffect(() => {
-    fetch('/api/v1/health')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-        return res.json();
-      })
-      .then((data: HealthData) => setHealth(data))
-      .catch((err: Error) => setHealthError(err.message));
-  }, []);
-
-  const connectWebSocket = () => {
-    if (wsRef.current) return;
-
-    setWsStatus('Connecting');
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/simulation`);
-
-    socket.onopen = () => {
-      setWsStatus('Connected');
-    };
-
-    socket.onmessage = (event) => {
-      setMessages((prev) => [...prev, `Received: ${event.data}`]);
-    };
-
-    socket.onclose = () => {
-      setWsStatus('Disconnected');
-      wsRef.current = null;
-    };
-
-    socket.onerror = () => {
-      setWsStatus('Disconnected');
-      wsRef.current = null;
-    };
-
-    wsRef.current = socket;
-  };
-
-  const disconnectWebSocket = () => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-  };
-
-  const sendMessage = () => {
-    if (wsRef.current && wsStatus === 'Connected' && inputMsg.trim()) {
-      wsRef.current.send(inputMsg);
-      setMessages((prev) => [...prev, `Sent: ${inputMsg}`]);
-      setInputMsg('');
+    if (wsStatus === 'Connected') {
+      sendMessage(payload);
+    } else {
+      alert('WebSocket is disconnected. Connecting now...');
+      connect();
     }
   };
 
   return (
-    <div className="min-h-screen p-8 max-w-4xl mx-auto space-y-6">
-      <header className="border-b border-slate-700 pb-4">
-        <h1 className="text-3xl font-bold tracking-tight text-cyan-400">MatchedFreq Dashboard</h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Circuit Simulation Control Panel
-        </p>
-      </header>
-
-      {/* REST API Panel */}
-      <section className="bg-slate-800 rounded-lg p-5 border border-slate-700">
-        <h2 className="text-xl font-semibold mb-3 text-slate-200">Backend Status</h2>
-        {healthError ? (
-          <div className="text-red-400 text-sm">Offline: {healthError}</div>
-        ) : health ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div className="bg-slate-900 p-3 rounded">
-              <span className="text-slate-500 block text-xs">Engine</span>
-              <span className="font-mono text-cyan-300">{health.engine}</span>
-            </div>
-            <div className="bg-slate-900 p-3 rounded">
-              <span className="text-slate-500 block text-xs">Status</span>
-              <span className="text-emerald-400 font-medium">{health.status}</span>
-            </div>
-            <div className="bg-slate-900 p-3 rounded">
-              <span className="text-slate-500 block text-xs">Version</span>
-              <span className="font-mono">{health.version}</span>
-            </div>
-            <div className="bg-slate-900 p-3 rounded">
-              <span className="text-slate-500 block text-xs">Asio</span>
-              <span className="font-mono">{health.asio_version}</span>
-            </div>
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex">
+      {/* Left Vertical Navigation Sidebar */}
+      <aside className="w-64 bg-slate-950 border-r border-slate-800 p-6 flex flex-col justify-between shrink-0">
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-cyan-400">MatchedFreq</h1>
+            <p className="text-slate-400 text-xs mt-1">Analog Circuit Simulator</p>
           </div>
-        ) : (
-          <div className="text-slate-400 text-sm">Connecting to server...</div>
-        )}
-      </section>
 
-      {/* WebSocket Stream Panel */}
-      <section className="bg-slate-800 rounded-lg p-5 border border-slate-700 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-slate-200">Simulation Stream</h2>
-          <span className="text-xs px-2.5 py-1 rounded-full bg-slate-900 text-slate-300">
-            {wsStatus}
-          </span>
+          <nav className="space-y-1">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`w-full text-left px-3 py-2.5 rounded-md font-medium text-sm transition cursor-pointer flex items-center justify-between ${activeTab === 'dashboard'
+                  ? 'bg-slate-800 text-cyan-400 border-l-2 border-cyan-400'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+            >
+              System Dashboard
+            </button>
+            <button
+              onClick={() => setActiveTab('schematics')}
+              className={`w-full text-left px-3 py-2.5 rounded-md font-medium text-sm transition cursor-pointer flex items-center justify-between ${activeTab === 'schematics'
+                  ? 'bg-slate-800 text-cyan-400 border-l-2 border-cyan-400'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+            >
+              Schematics & Netlist
+            </button>
+          </nav>
         </div>
 
-        <div>
-          {wsStatus === 'Disconnected' ? (
-            <button
-              onClick={connectWebSocket}
-              className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 font-medium text-sm rounded transition cursor-pointer"
+        <div className="pt-4 border-t border-slate-800 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400">WebSocket:</span>
+            <span
+              className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${wsStatus === 'Connected'
+                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                  : wsStatus === 'Connecting'
+                    ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                    : 'bg-slate-800 text-slate-400 border border-slate-700'
+                }`}
             >
-              Connect WebSocket
-            </button>
-          ) : (
+              {wsStatus}
+            </span>
+          </div>
+          {wsStatus === 'Disconnected' && (
             <button
-              onClick={disconnectWebSocket}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 font-medium text-sm rounded transition cursor-pointer"
+              onClick={connect}
+              className="w-full py-1.5 bg-cyan-600 hover:bg-cyan-500 font-medium text-xs rounded transition cursor-pointer"
             >
-              Disconnect
+              Connect WS
             </button>
           )}
         </div>
+      </aside>
 
-        {/* Console Log */}
-        <div className="h-40 bg-slate-950 rounded p-3 font-mono text-xs overflow-y-auto space-y-1">
-          {messages.length === 0 ? (
-            <span className="text-slate-600">No stream data received.</span>
-          ) : (
-            messages.map((msg, i) => <div key={i} className="text-slate-300">{msg}</div>)
-          )}
-        </div>
-
-        {/* Input Controls */}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={inputMsg}
-            onChange={(e) => setInputMsg(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            disabled={wsStatus !== 'Connected'}
-            placeholder="Type message to C++ backend..."
-            className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm focus:outline-none disabled:opacity-50"
+      {/* Main Content Area */}
+      <main className="flex-1 p-8 max-w-6xl mx-auto overflow-y-auto">
+        {activeTab === 'dashboard' ? (
+          <SystemDashboard
+            health={health}
+            healthError={healthError}
+            wsStatus={wsStatus}
+            messages={messages}
+            onConnectWs={connect}
+            onDisconnectWs={disconnect}
+            onSendMessage={sendMessage}
           />
-          <button
-            onClick={sendMessage}
-            disabled={wsStatus !== 'Connected'}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-sm rounded font-medium disabled:opacity-50 transition cursor-pointer"
-          >
-            Send
-          </button>
-        </div>
-      </section>
+        ) : (
+          <NetlistEditor onRunSimulation={handleRunSimulation} messages={messages} />
+        )}
+      </main>
     </div>
   );
 }

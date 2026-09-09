@@ -7,19 +7,24 @@ Checks: >
   modernize-*,
   performance-*,
   readability-*,
-  -misc-use-internal-linkage
+  -misc-use-internal-linkage,
+  -misc-non-private-member-variables-in-classes,
+  -readability-identifier-length,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -readability-function-cognitive-complexity
 
 WarningsAsErrors: '*'
 
 CheckOptions:
   readability-identifier-naming.FunctionCase: PascalCase
+  readability-identifier-naming.NamespaceCase: PascalCase
   readability-identifier-naming.VariableCase: camelBack
   readability-identifier-naming.ConstexprVariableCase: UPPER_CASE
   readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
-  readability-identifier-naming.MemberPrefix: 'm_'
-  readability-identifier-naming.MemberCase: PascalCase
-  readability-identifier-naming.ClassMemberPrefix: 's_'
-  readability-identifier-naming.ClassMemberCase: PascalCase
   readability-identifier-naming.StaticVariablePrefix: 's_'
   readability-identifier-naming.StaticVariableCase: PascalCase
-  readability-identifier-naming.NamespaceCase: PascalCase
+  readability-identifier-naming.ClassMemberPrefix: 'm_'
+  readability-identifier-naming.ClassMemberCase: PascalCase
+  readability-identifier-naming.ClassConstantPrefix: 's_'
+  readability-identifier-naming.ClassConstantCase: PascalCase
+  readability-identifier-naming.StructMemberCase: camelBack

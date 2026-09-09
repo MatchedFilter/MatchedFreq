@@ -11,11 +11,14 @@
   ],
   "C_Cpp.formatting": "disabled",
   "editor.formatOnSave": true,
-  "[cpp]": {
-    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+  "editor.detectIndentation": false,
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "[typescript]": {
+    "editor.tabSize": 2
   },
-  "[c]": {
-    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+  "[typescriptreact]": {
+    "editor.tabSize": 2
   },
   "cpack.query.driver": false,
   "files.insertFinalNewline": true,

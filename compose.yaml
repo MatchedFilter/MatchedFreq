@@ -1,0 +1,14 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: matchedfreq_dev
+    volumes:
+      - .:/workspace
+    ports:
+      - "18080:18080"
+      - "5173:5173"
+    working_dir: /workspace
+    stdin_open: true
+    tty: true

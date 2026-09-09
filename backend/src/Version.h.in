@@ -1,0 +1,9 @@
+#pragma once
+#include <string_view>
+
+namespace MatchedFreq
+{
+
+inline constexpr std::string_view MATCHEDFREQ_VERSION = "@MATCHEDFREQ_VERSION@";
+
+} // namespace MatchedFreq

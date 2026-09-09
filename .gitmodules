@@ -7,3 +7,6 @@
 [submodule "backend/ThirdParty/spdlog"]
 	path = backend/ThirdParty/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "backend/ThirdParty/eigen"]
+	path = backend/ThirdParty/eigen
+	url = https://gitlab.com/libeigen/eigen.git

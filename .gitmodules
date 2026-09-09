@@ -4,3 +4,6 @@
 [submodule "backend/ThirdParty/asio"]
 	path = backend/ThirdParty/asio
 	url = https://github.com/chriskohlhoff/asio.git
+[submodule "backend/ThirdParty/spdlog"]
+	path = backend/ThirdParty/spdlog
+	url = https://github.com/gabime/spdlog.git
